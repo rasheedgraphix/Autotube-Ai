@@ -1,0 +1,6 @@
+{
+  "name": "AutoTube Studio",
+  "description": "Autonomous YouTube Shorts & 8+ Minute Long Video Factory powered by Gemini AI, Google Veo 3, ElevenLabs, and YouTube Data API.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

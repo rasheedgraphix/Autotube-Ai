@@ -1,11 +1,17 @@
-<div align="center">
+# AutoTube AI - YouTube Shorts Automated Pipeline
 
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
+App is manual-only, no auto schedule.
 
-  <h1>Built with AI Studio</h2>
+## Overview
+AutoTube AI generates and uploads viral 60-second YouTube Shorts on demand when you click **"GENERATE & UPLOAD NOW"**.
 
-  <p>The fastest path from prompt to production with Gemini.</p>
+### Manual Pipeline Flow:
+1. Queries YouTube Analytics API for the highest CTR topic.
+2. Prompts Gemini AI to write viral scripts, 15 SEO tags, and 5 hashtags.
+3. Renders 60-second vertical video (Google Veo 3 / FFmpeg + ElevenLabs voiceover + Hormozi bold captions).
+4. Auto-uploads directly to connected YouTube channel via OAuth 2.0.
 
-  <a href="https://aistudio.google.com/apps">Start building</a>
-
-</div>
+### Configuration
+- `GEMINI_API_KEY`: Required for script generation and Veo 3.
+- `ELEVENLABS_API_KEY`: Required for human studio voiceover.
+- `GOOGLE_CLIENT_ID` & `GOOGLE_CLIENT_SECRET`: For YouTube OAuth integration.
