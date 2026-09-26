@@ -551,7 +551,8 @@ export function pickFreshUntouchedSubtopic(
     candidates = Object.values(FRESH_CATEGORY_TOPICS).flat();
   }
 
-  // Iterate to find first completely untouched candidate (zero collision and zero keyword overlap)
+  // Collect all completely untouched candidates (zero collision and zero keyword overlap)
+  const untouchedCandidates: typeof candidates = [];
   let bestCandidate: (typeof candidates)[0] | null = null;
   let minOverlap = Infinity;
 
@@ -564,13 +565,19 @@ export function pickFreshUntouchedSubtopic(
 
     // Check keyword collision against registry
     const kwOverlapCount = candKws.filter((k) => regWords.has(k) || existingLower.includes(k)).length;
+    if (kwOverlapCount === 0) {
+      untouchedCandidates.push(cand);
+    }
     if (kwOverlapCount < minOverlap) {
       minOverlap = kwOverlapCount;
       bestCandidate = cand;
-      if (kwOverlapCount === 0) {
-        return cand;
-      }
     }
+  }
+
+  if (untouchedCandidates.length > 0) {
+    // Rotate dynamically so consecutive runs on the same category pick a different fresh subject every time
+    const pickIdx = (coveredRegistry.length + Math.floor(Date.now() / 1000)) % untouchedCandidates.length;
+    return untouchedCandidates[pickIdx];
   }
 
   if (bestCandidate && minOverlap <= 1) {
@@ -578,9 +585,9 @@ export function pickFreshUntouchedSubtopic(
   }
 
   // If all candidates have been covered or have partial overlap, cycle deterministically through candidates
-  // so consecutive runs on the same category ALWAYS rotate to a different planet/phenomenon (e.g. Mars -> Jupiter -> Saturn -> Webb)
+  // so consecutive runs on the same category ALWAYS rotate to a different phenomenon
   if (candidates.length > 0) {
-    const rotatedIdx = coveredRegistry.length % candidates.length;
+    const rotatedIdx = (coveredRegistry.length + Math.floor(Date.now() / 1000)) % candidates.length;
     return candidates[rotatedIdx];
   }
 
@@ -655,7 +662,7 @@ export function checkTitleCollision(
 /**
  * Fetches all recent video titles from the connected YouTube channel and local history to avoid duplicates
  */
-async function fetchChannelExistingVideoTitles(oauthToken?: string | null): Promise<string[]> {
+export async function fetchChannelExistingVideoTitles(oauthToken?: string | null): Promise<string[]> {
   const titles: string[] = [];
 
   // If no token passed, restore from persistent storage (/tmp/autotube/token.json or data/token.json)
@@ -776,12 +783,26 @@ export function resetPipeline() {
   currentRunId = null;
   currentStep = "idle";
   progressPercent = 0;
+  uploadPercent = 0;
   currentStageIndex = 0;
-  stageTitle = "Idle - Ready";
-  stageDescription = "Pipeline stopped and reset.";
+  stageTitle = "Idle";
+  stageDescription = "Ready to produce viral cricket documentaries or 2+ min shorts.";
   stageDetail = "";
-  console.log("[Pipeline] Pipeline was reset/cleared.");
-  return { success: true };
+  isVideoReady = false;
+  isUploadReady = false;
+  activeLogs = [];
+  activeVideoMetadata = null;
+  try {
+    saveHistory([]);
+    if (fs.existsSync(WORKSPACE_HISTORY_FILE)) {
+      fs.writeFileSync(WORKSPACE_HISTORY_FILE, "[]", "utf8");
+    }
+    if (fs.existsSync(HISTORY_FILE)) {
+      fs.writeFileSync(HISTORY_FILE, "[]", "utf8");
+    }
+  } catch {}
+  console.log("[Pipeline] Pipeline was reset and history cleared.");
+  return { success: true, message: "Pipeline state and history cleared successfully." };
 }
 
 export function getPipelineStatus() {
@@ -900,12 +921,14 @@ async function uploadBufferToYouTube(
     throw new Error("YouTube API did not return an upload session URL.");
   }
 
-  // 2. Stream/Upload the binary MP4 buffer
+  // 2. Stream/Upload the binary MP4 buffer with full Google Resumable Upload headers
   const uploadResponse = await fetch(uploadLocation, {
     method: "PUT",
     headers: {
+      Authorization: `Bearer ${oauthToken}`,
       "Content-Type": "video/mp4",
       "Content-Length": String(buffer.length),
+      "Content-Range": `bytes 0-${buffer.length - 1}/${buffer.length}`,
     },
     body: buffer,
   });
@@ -924,6 +947,23 @@ async function uploadBufferToYouTube(
 
   const uploadResult = await uploadResponse.json();
   const videoId = uploadResult.id;
+
+  // Verify YouTube received and queued the video for processing
+  try {
+    const statusRes = await fetch(
+      `https://www.googleapis.com/youtube/v3/videos?part=snippet,status,processingDetails&id=${videoId}`,
+      {
+        headers: { Authorization: `Bearer ${oauthToken}` },
+      }
+    );
+    if (statusRes.ok) {
+      const statusData: any = await statusRes.json();
+      const item = statusData.items?.[0];
+      const procStatus = item?.processingDetails?.processingStatus || "queued";
+      console.log(`[YouTube API] Video ${videoId} successfully accepted by YouTube! Processing status: ${procStatus}`);
+    }
+  } catch {}
+
   return {
     videoId,
     videoUrl: `https://www.youtube.com/watch?v=${videoId}`,
@@ -1304,8 +1344,12 @@ export async function runDailyAutoPipeline(
         : (isLongVideo ? 8 : 3);
 
       const sceneCount = isLongVideo
-        ? Math.max(8, Math.min(24, Math.round(requestedMinutes * 2))) // e.g. 8 mins = 16 scenes (30s each)
-        : Math.max(6, Math.min(15, Math.round(requestedMinutes * 5))); // e.g. 3 mins = 15 scenes (12s each)
+        ? Math.max(6, Math.min(20, Math.round(requestedMinutes * 2))) // e.g. 8 mins = 16 scenes (30s each)
+        : requestedMinutes <= 1
+        ? 4 // 1 minute: 4 snappy scenes (48s total) - ultrafast under 90s render!
+        : requestedMinutes <= 2
+        ? 8 // 2 minutes: 8 scenes (96s total) - smooth fast render
+        : Math.max(6, Math.min(12, Math.round(requestedMinutes * 4))); // 3 mins: 12 scenes (144s total)
 
       const sceneDuration = isLongVideo ? 30 : 12;
 
@@ -2084,6 +2128,7 @@ Subscribe to AutoTube AI for full-length marine biology and Earth science docume
     );
 
     // Validate scenes
+    const isCustomUserPrompt = Boolean(options.customPrompt && options.customPrompt.trim());
     const defaultSceneDuration = isLongVideo ? 15 : 12;
     let rawScenes: VideoScene[] = Array.isArray(parsedScript.scenes) && parsedScript.scenes.length > 0
       ? parsedScript.scenes.map((s: any, idx: number) => ({
@@ -2095,13 +2140,19 @@ Subscribe to AutoTube AI for full-length marine biology and Earth science docume
           voiceText: typeof s.voiceText === "string" ? s.voiceText : `${s.title || ""}. ${s.body || ""}`,
           durationSeconds: hasHighlightUrls
             ? (typeof s.durationSeconds === "number" && s.durationSeconds >= 10 ? s.durationSeconds : (isLongVideo ? 15 : 12))
-            : (isLongVideo ? Math.min(18, Math.max(12, Number(s.durationSeconds) || 15)) : Math.min(14, Math.max(11, Number(s.durationSeconds) || 12))),
+            : isCustomUserPrompt
+              ? (typeof s.durationSeconds === "number" && s.durationSeconds >= 5 ? s.durationSeconds : (isLongVideo ? 30 : 12))
+              : (isLongVideo ? Math.min(32, Math.max(12, Number(s.durationSeconds) || 15)) : Math.min(14, Math.max(11, Number(s.durationSeconds) || 12))),
           customVideoPath: s.customVideoPath,
           customVideoStart: s.customVideoStart,
         }))
       : [];
 
-    if (isLongVideo && !hasHighlightUrls) {
+    if (isCustomUserPrompt && rawScenes.length > 0) {
+      // Respect user custom prompt/script scenes 100% without truncating or overwriting with stock topics
+      const finalScene = rawScenes[rawScenes.length - 1];
+      if (!finalScene.badge) finalScene.badge = "🔔 SUBSCRIBE FOR MORE";
+    } else if (isLongVideo && !hasHighlightUrls) {
       // Ensure 8 high-impact chapters for 120s documentary (8 x 15s = 120s Full HD)
       const chapterTopics = [
         { badge: "PROLOGUE", title: "The Deep Enigma", body: `Exploring the profound unsolved frontiers and documented physics of ${winningCategory.name}.`, highlight: "UNSOLVED MYSTERY" },
@@ -2159,20 +2210,20 @@ Subscribe to AutoTube AI for full-length marine biology and Earth science docume
       ];
 
       if (rawScenes.length === 0) {
-        rawScenes = defaultShortStoryChapters.map((ch, idx) => ({
+        rawScenes = defaultShortStoryChapters.slice(0, 10).map((ch, idx) => ({
           badge: ch.badge,
           title: ch.title,
           body: ch.body,
           highlight: ch.highlight,
           visualPrompt: `cinematic 9:16 vertical 4k documentary photography ${winningCategory.name} ${ch.title} dramatic lighting`,
-          voiceText: idx === 14
+          voiceText: idx === 9
             ? "Agar aapko yeh hairat-angez fact pasand aaya toh mazeed aisi videos ke liye channel ko zaroor subscribe karein, like karein aur bell icon dabayein!"
             : `${ch.title}. ${ch.body}`,
           durationSeconds: 12,
         }));
       } else {
-        // Enforce 15 scenes (each 12s = 180s total, up to 3 minutes)
-        while (rawScenes.length < 15) {
+        // Enforce 10 scenes (each 12s = 120s total, exactly 2 minutes high retention)
+        while (rawScenes.length < 10) {
           const idx = rawScenes.length;
           const ch = defaultShortStoryChapters[idx] || defaultShortStoryChapters[defaultShortStoryChapters.length - 1];
           rawScenes.push({
@@ -2181,14 +2232,14 @@ Subscribe to AutoTube AI for full-length marine biology and Earth science docume
             body: ch.body,
             highlight: ch.highlight,
             visualPrompt: `cinematic 9:16 vertical 4k documentary photography ${winningCategory.name} ${ch.title} dramatic lighting`,
-            voiceText: idx === 14
+            voiceText: idx === 9
               ? "Agar aapko yeh hairat-angez fact pasand aaya toh mazeed aisi videos ke liye channel ko zaroor subscribe karein, like karein aur bell icon dabayein!"
               : `${ch.title}. ${ch.body}`,
             durationSeconds: 12,
           });
         }
-        if (rawScenes.length > 15) {
-          rawScenes = rawScenes.slice(0, 15);
+        if (rawScenes.length > 10) {
+          rawScenes = rawScenes.slice(0, 10);
         }
       }
 
@@ -2196,8 +2247,11 @@ Subscribe to AutoTube AI for full-length marine biology and Earth science docume
       const finalScene = rawScenes[rawScenes.length - 1];
       finalScene.badge = "🔔 SUBSCRIBE FOR DAILY FACTS";
       finalScene.highlight = "SUBSCRIBE & LIKE";
-      if (!finalScene.voiceText.toLowerCase().includes("subscribe")) {
-        finalScene.voiceText += " Agar aapko yeh hairat-angez fact pasand aaya toh channel ko abhi zaroor subscribe karein aur bell icon dabayein!";
+      const existingVoice = (finalScene.voiceText || `${finalScene.title}. ${finalScene.body}`).trim();
+      if (!existingVoice.toLowerCase().includes("subscribe")) {
+        finalScene.voiceText = `${existingVoice} Agar aapko yeh hairat-angez fact pasand aaya toh channel ko abhi zaroor subscribe karein aur bell icon dabayein!`;
+      } else {
+        finalScene.voiceText = existingVoice;
       }
     }
 
@@ -2269,25 +2323,7 @@ Subscribe to AutoTube AI for full-length marine biology and Earth science docume
       },
     });
 
-    isVideoReady = true;
-    progressPercent = 90;
-    activeVideoMetadata = {
-      title: cleanTitle,
-      format: isLongVideo ? "16:9 Long Video (8+ Min)" : "9:16 Short (2+ Min)",
-      durationSeconds: videoResult.durationSeconds,
-      sizeBytes: videoResult.sizeBytes,
-      previewUrl: `/api/scheduler/video-preview/${runId}`,
-    };
-
-    executionRecord.video = {
-      sizeBytes: videoResult.sizeBytes,
-      durationSeconds: videoResult.durationSeconds,
-      previewUrl: `/api/scheduler/video-preview/${runId}`,
-      format: isLongVideo ? "16:9 Long Video (8+ Min)" : "9:16 Short (2+ Min)",
-      aspectRatio: isLongVideo ? "16:9" : "9:16",
-    };
-
-    // Save temporary video file for preview/download in /tmp/autotube
+    // 1. Save temporary video file for preview/download in /tmp/autotube FIRST before advertising preview URL
     ensureAutotubeDirectory();
     const previewDir = path.join(AUTOTUBE_TMP_DIR, "previews");
     if (!fs.existsSync(previewDir)) {
@@ -2314,6 +2350,25 @@ Subscribe to AutoTube AI for full-length marine biology and Earth science docume
       }
       fs.copyFileSync(savedPreviewPath, path.join(wsPreviewDir, `${runId}.mp4`));
     } catch {}
+
+    // 2. Set video as fully ready and accessible for preview player & download
+    isVideoReady = true;
+    progressPercent = 90;
+    activeVideoMetadata = {
+      title: cleanTitle,
+      format: isLongVideo ? "16:9 Long Video (8+ Min)" : "9:16 Short (2+ Min)",
+      durationSeconds: videoResult.durationSeconds,
+      sizeBytes: videoResult.sizeBytes,
+      previewUrl: `/api/scheduler/video-preview/${runId}`,
+    };
+
+    executionRecord.video = {
+      sizeBytes: videoResult.sizeBytes,
+      durationSeconds: videoResult.durationSeconds,
+      previewUrl: `/api/scheduler/video-preview/${runId}`,
+      format: isLongVideo ? "16:9 Long Video (8+ Min)" : "9:16 Short (2+ Min)",
+      aspectRatio: isLongVideo ? "16:9" : "9:16",
+    };
 
     addLog(
       "video_render",
@@ -2573,3 +2628,4 @@ export async function publishVideoRunToYouTube(
     message: `Video "${title}" successfully published to your YouTube channel!`,
   };
 }
+

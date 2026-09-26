@@ -260,14 +260,11 @@ export async function generateSpeechVoice(
   const stability = options.stability ?? voiceConfig.stability;
   const similarityBoost = options.similarityBoost ?? voiceConfig.similarityBoost;
 
-  // 0. Cache check: If output already exists with valid audio, return immediately
-  if (fs.existsSync(outputPath) && fs.statSync(outputPath).size > 1000) {
-    return {
-      success: true,
-      source: "cache",
-      filePath: outputPath,
-      voiceUsed: voiceConfig.voiceName,
-    };
+  // Clean up any stale file from a previous session at this path to ensure fresh synthesis
+  if (fs.existsSync(outputPath)) {
+    try {
+      fs.unlinkSync(outputPath);
+    } catch {}
   }
 
   // 1. If ElevenLabs API Key is provided and key is active/authorized, call ElevenLabs API

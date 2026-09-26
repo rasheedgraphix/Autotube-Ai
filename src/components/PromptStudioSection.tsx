@@ -31,8 +31,10 @@ export default function PromptStudioSection({
 }: Props) {
   const [topic, setTopic] = useState("");
   const [customPrompt, setCustomPrompt] = useState("");
+  const [customScript, setCustomScript] = useState("");
+  const [autoPublish, setAutoPublish] = useState<boolean>(true);
   const [videoFormat, setVideoFormat] = useState<"short" | "long">("short");
-  const [targetMinutes, setTargetMinutes] = useState<number>(3);
+  const [targetMinutes, setTargetMinutes] = useState<number>(1);
   const [languageStyle, setLanguageStyle] = useState<"urdu" | "english">("urdu");
   const [selectedVoiceId, setSelectedVoiceId] = useState<string>("auto");
   const [privacyStatus, setPrivacyStatus] = useState<"public" | "unlisted" | "private">("public");
@@ -83,8 +85,9 @@ export default function PromptStudioSection({
 
   const handleGenerateFromPrompt = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!customPrompt.trim()) {
-      setErrorMsg("Barahe karam video banane ke liye prompt aur detail zaroor likhein!");
+    const effectiveText = customScript.trim() || customPrompt.trim();
+    if (!effectiveText && !topic.trim()) {
+      setErrorMsg("Barahe karam prompt ya script darj karein!");
       return;
     }
 
@@ -93,6 +96,11 @@ export default function PromptStudioSection({
     setIsSubmitting(true);
 
     try {
+      const isDirectScript = Boolean(customScript.trim());
+      const promptPayload = isDirectScript
+        ? `USE EXACT SCRIPT WORD FOR WORD: ${customScript.trim()}`
+        : customPrompt.trim();
+
       const res = await fetch("/api/scheduler/daily-run", {
         method: "POST",
         headers: {
@@ -106,7 +114,8 @@ export default function PromptStudioSection({
           targetDurationMinutes: Number(targetMinutes) || (videoFormat === "long" ? 8 : 3),
           languageStyle,
           voiceId: selectedVoiceId === "auto" ? undefined : selectedVoiceId,
-          customPrompt: customPrompt.trim(),
+          customPrompt: promptPayload,
+          autoUpload: autoPublish,
         }),
       });
 
@@ -116,7 +125,9 @@ export default function PromptStudioSection({
       }
 
       setSuccessMsg(
-        `Video generation shuru ho chuki hai! (${videoFormat === "long" ? "Long Video" : "Shorts"}, ~${targetMinutes} Minutes). Aap Live Pipeline Tracker mein real-time progress dekh sakte hain.`
+        `Video generation shuru ho chuki hai! (${videoFormat === "long" ? "Long Video" : "Shorts"}, ~${targetMinutes} Minutes). ${
+          autoPublish ? "Ban'nay ke baad khud YouTube par upload ho jayegi." : "Ban'nay ke baad pehle preview dikhayegi."
+        }`
       );
 
       if (onNavigateToTracker) {
@@ -132,24 +143,22 @@ export default function PromptStudioSection({
   return (
     <div className="space-y-6">
       {/* Top Banner Header */}
-      <div className="p-6 rounded-2xl bg-gradient-to-r from-slate-900 via-purple-950/40 to-slate-900 border border-purple-500/30 shadow-xl">
+      <div className="p-6 rounded-2xl bg-slate-900/90 border border-slate-800 shadow-sm">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/20 border border-purple-500/40 text-purple-300 text-xs font-bold mb-2">
+            <div className="flex items-center gap-2 text-xs text-purple-400 font-semibold mb-1">
               <Sparkles className="w-3.5 h-3.5" />
               <span>Prompt-to-Video AI Studio</span>
             </div>
-            <h2 className="text-2xl font-black text-white">Custom Prompt Video Generator</h2>
-            <p className="text-xs sm:text-sm text-slate-300 mt-1 max-w-2xl">
-              Aap apne alfaz mein prompt likhein: <strong>video kitne minute ki ho</strong>,{" "}
-              <strong>kis topic par ho</strong>, <strong>pehle kya dikhaye</strong>, <strong>uske baad kya ho</strong>, aur{" "}
-              <strong>aakhir mein kya bayan kare</strong>. System 100% professional story arc ke sath video banayega.
+            <h2 className="text-xl font-bold text-white">Custom Prompt Video Generator</h2>
+            <p className="text-xs sm:text-sm text-slate-400 mt-1 max-w-2xl leading-relaxed">
+              Apne alfaz mein video ka prompt ya poora script darj karein. System exact story arc, cinematic visuals, aur voiceover generate karega.
             </p>
           </div>
 
           <div className="flex items-center gap-2">
             {connectedToken ? (
-              <div className="px-3.5 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-medium flex items-center gap-1.5">
+              <div className="px-3.5 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-medium flex items-center gap-1.5">
                 <CheckCircle2 className="w-4 h-4 text-emerald-400" />
                 <span>Channel: {channelTitle || "Connected"}</span>
               </div>
@@ -157,7 +166,7 @@ export default function PromptStudioSection({
               <button
                 type="button"
                 onClick={onConnectChannel}
-                className="px-3.5 py-1.5 rounded-xl bg-red-600 hover:bg-red-500 text-white text-xs font-bold transition-all shadow-md flex items-center gap-1.5 cursor-pointer"
+                className="px-3.5 py-2 rounded-lg bg-red-600 hover:bg-red-500 text-white text-xs font-semibold transition-all shadow-sm flex items-center gap-1.5 cursor-pointer"
               >
                 <span>Connect YouTube Channel</span>
               </button>
@@ -168,14 +177,14 @@ export default function PromptStudioSection({
 
       {/* Notifications */}
       {errorMsg && (
-        <div className="p-4 rounded-xl bg-red-950/80 border border-red-700/60 text-red-200 text-xs flex items-center gap-3">
+        <div className="p-4 rounded-xl bg-red-950/40 border border-red-800/60 text-red-200 text-xs flex items-center gap-3">
           <AlertCircle className="w-5 h-5 flex-shrink-0 text-red-400" />
           <span>{errorMsg}</span>
         </div>
       )}
 
       {successMsg && (
-        <div className="p-4 rounded-xl bg-emerald-950/80 border border-emerald-700/60 text-emerald-200 text-xs flex items-center gap-3">
+        <div className="p-4 rounded-xl bg-emerald-950/40 border border-emerald-800/60 text-emerald-200 text-xs flex items-center gap-3">
           <CheckCircle2 className="w-5 h-5 flex-shrink-0 text-emerald-400" />
           <span>{successMsg}</span>
         </div>
@@ -185,57 +194,74 @@ export default function PromptStudioSection({
       <form onSubmit={handleGenerateFromPrompt} className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left Column: Form Inputs */}
         <div className="lg:col-span-8 space-y-6">
-          <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800 shadow-sm space-y-5">
+          <div className="p-6 rounded-2xl bg-slate-900/90 border border-slate-800 shadow-sm space-y-5">
             {/* Topic Field */}
             <div>
-              <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">
+              <label className="block text-xs font-semibold text-slate-300 mb-1.5">
                 1. Video Topic / Name (Mauzooh)
               </label>
               <input
                 type="text"
                 value={topic}
                 onChange={(e) => setTopic(e.target.value)}
-                placeholder="e.g. Deep Ocean Mysteries, James Webb Space Discovery, Human Brain Facts..."
-                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-slate-100 placeholder-slate-500 text-sm focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 transition-colors"
+                placeholder="e.g. Alaska ki Horror Story, Bermuda Triangle Mystery, Cricket Miracle..."
+                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-slate-100 placeholder-slate-500 text-sm focus:outline-none focus:border-purple-500 transition-colors"
               />
             </div>
 
-            {/* Custom Prompt or Full Script Text Area */}
+            {/* Input Box 1: Custom Prompt Input */}
             <div>
-              <div className="flex items-center justify-between mb-2">
-                <label className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
-                  <FileText className="w-3.5 h-3.5 text-purple-400" />
-                  <span>2. Aapka Prompt YA Poora Tayar Script (Paste Script or Prompt)</span>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-xs font-semibold text-slate-300 flex items-center gap-2">
+                  <Sparkles className="w-3.5 h-3.5 text-purple-400" />
+                  <span>2. Prompt Se Video Banayein (AI Script, Hook & Story Khud Banayega)</span>
                 </label>
-                <span className="text-[11px] text-purple-400 font-medium">Script &amp; Story Arc</span>
+                <span className="text-[11px] text-purple-400 font-medium">Prompt Box</span>
               </div>
-
               <textarea
-                rows={8}
+                rows={4}
                 value={customPrompt}
-                onChange={(e) => setCustomPrompt(e.target.value)}
-                placeholder="Yahan 2 options hain:
-
-Option A (Poora Script):
-Agar aapke paas tayar script hai, to poora script yahan paste kar dein. AI usi script ke jumlay boley ga aur har line ke mutabiq cinematic visuals banayega.
-
-Option B (Step-by-step Prompt):
-1. Pehle kya shuru ho (Opening Hook / Hairat-angez sawal)
-2. Uske baad kya mechanism ya backstory samjhaye
-3. Uske baad kya turning point ya shock reveal ho
-4. Aur aakhir mein kya natija nikle aur subscribe karne ka bole..."
-                className="w-full p-4 rounded-xl bg-slate-950 border border-slate-700 text-slate-100 placeholder-slate-500 text-sm focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 leading-relaxed font-mono text-xs transition-colors"
+                onChange={(e) => {
+                  setCustomPrompt(e.target.value);
+                  if (customScript.trim()) setCustomScript("");
+                }}
+                placeholder="Prompt likhein: e.g. Alaska ki sardi mein kho jane wale shakhs ki khaufnak kahani. Pehle suspense shuru ho, darmiyan mein ajeeb awaazein aur aakhir mein hairat-angez inkeshaf..."
+                className="w-full p-3.5 rounded-xl bg-slate-950 border border-slate-800 text-slate-100 placeholder-slate-500 text-xs focus:outline-none focus:border-purple-500 leading-relaxed font-mono transition-colors"
               />
-              <p className="text-[11px] text-slate-400 mt-1.5">
-                💡 <strong>Script ya Prompt:</strong> Agar aap poora script paste karenge to voice-over mein aapka hi script bola jayega. Agar prompt denge to AI aapki hidayat ke mutabiq story build karega.
+              <p className="text-[11px] text-slate-400 mt-1">
+                Yahan sirf prompt likhein — AI khud high-CTR title, description, tags, hashtags aur poori kahani likhega.
+              </p>
+            </div>
+
+            {/* Input Box 2: Dedicated Prepared Script Input */}
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-xs font-semibold text-slate-300 flex items-center gap-2">
+                  <FileText className="w-3.5 h-3.5 text-cyan-400" />
+                  <span>3. Apna Tayyar Script Yahan Dalein (Agar Aapka Apna Script Hai)</span>
+                </label>
+                <span className="text-[11px] text-cyan-400 font-medium">Dedicated Script Box</span>
+              </div>
+              <textarea
+                rows={5}
+                value={customScript}
+                onChange={(e) => {
+                  setCustomScript(e.target.value);
+                  if (customPrompt.trim()) setCustomPrompt("");
+                }}
+                placeholder="Agar aapne pehle se script likha hua hai, toh yahan paste karein. AI lafz ba lafz yehi script boley ga aur isi ke hisaab se visuals aur Hormozi subtitles lagayega."
+                className="w-full p-3.5 rounded-xl bg-slate-950 border border-slate-800 text-slate-100 placeholder-slate-500 text-xs focus:outline-none focus:border-cyan-500 leading-relaxed font-mono transition-colors"
+              />
+              <p className="text-[11px] text-slate-400 mt-1">
+                Aapka script aate hi AI automatic SEO Title, Description, Tags aur #Hashtags generate kar dega.
               </p>
             </div>
 
             {/* Format & Duration Controls */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-slate-800">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-slate-800/80">
               {/* Format Switcher */}
               <div>
-                <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">
+                <label className="block text-xs font-semibold text-slate-300 mb-1.5">
                   3. Video Format
                 </label>
                 <div className="grid grid-cols-2 gap-2">
@@ -247,15 +273,15 @@ Option B (Step-by-step Prompt):
                     }}
                     className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
                       videoFormat === "short"
-                        ? "bg-purple-950/60 border-purple-500 text-white shadow-md ring-1 ring-purple-400"
+                        ? "bg-slate-800 border-purple-500/80 text-white shadow-sm"
                         : "bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-slate-200"
                     }`}
                   >
                     <div className="flex items-center gap-2">
                       <Zap className="w-4 h-4 text-purple-400" />
-                      <span className="text-xs font-bold">Shorts (9:16)</span>
+                      <span className="text-xs font-semibold">Shorts (9:16)</span>
                     </div>
-                    <p className="text-[10px] text-slate-400 mt-1">Vertical up to 3 Min</p>
+                    <p className="text-[11px] text-slate-400 mt-1">Vertical up to 3 Min</p>
                   </button>
 
                   <button
@@ -266,40 +292,45 @@ Option B (Step-by-step Prompt):
                     }}
                     className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
                       videoFormat === "long"
-                        ? "bg-purple-950/60 border-purple-500 text-white shadow-md ring-1 ring-purple-400"
+                        ? "bg-slate-800 border-purple-500/80 text-white shadow-sm"
                         : "bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-slate-200"
                     }`}
                   >
                     <div className="flex items-center gap-2">
                       <Film className="w-4 h-4 text-purple-400" />
-                      <span className="text-xs font-bold">Long Video (16:9)</span>
+                      <span className="text-xs font-semibold">Long Video (16:9)</span>
                     </div>
-                    <p className="text-[10px] text-slate-400 mt-1">Full HD 8+ Min Doc</p>
+                    <p className="text-[11px] text-slate-400 mt-1">Full HD 8+ Min Doc</p>
                   </button>
                 </div>
               </div>
 
               {/* Exact Minutes Selector */}
               <div>
-                <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2 flex items-center justify-between">
-                  <span>4. Video Duration (Kitne Minute)</span>
-                  <span className="text-purple-400 font-mono text-xs">{targetMinutes} Minutes</span>
+                <label className="block text-xs font-semibold text-slate-300 mb-1.5 flex items-center justify-between">
+                  <span>4. Video Duration</span>
+                  <span className="text-purple-400 font-mono text-xs tabular-nums">{targetMinutes} Minutes</span>
                 </label>
 
                 {videoFormat === "short" ? (
                   <div className="grid grid-cols-3 gap-2">
-                    {[1, 2, 3].map((m) => (
+                    {[
+                      { m: 1, label: "1 Min (Fast / 2G-3G)" },
+                      { m: 2, label: "2 Min (Balanced)" },
+                      { m: 3, label: "3 Min (Full Short)" },
+                    ].map(({ m, label }) => (
                       <button
                         key={m}
                         type="button"
                         onClick={() => setTargetMinutes(m)}
-                        className={`py-2 px-3 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+                        className={`py-2 px-2.5 rounded-xl border text-center transition-all cursor-pointer ${
                           targetMinutes === m
-                            ? "bg-purple-600 border-purple-400 text-white shadow-md"
+                            ? "bg-slate-800 border-purple-500/80 text-white shadow-sm"
                             : "bg-slate-950 border-slate-800 text-slate-300 hover:border-slate-700"
                         }`}
                       >
-                        {m} Min
+                        <div className="text-xs font-bold tabular-nums">{m} Min</div>
+                        <div className="text-[10px] text-slate-400 mt-0.5 truncate">{label.split(" ")[1] || ""}</div>
                       </button>
                     ))}
                   </div>
@@ -310,9 +341,9 @@ Option B (Step-by-step Prompt):
                         key={m}
                         type="button"
                         onClick={() => setTargetMinutes(m)}
-                        className={`py-2 px-3 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+                        className={`py-2 px-3 rounded-xl border text-xs font-semibold tabular-nums transition-all cursor-pointer ${
                           targetMinutes === m
-                            ? "bg-purple-600 border-purple-400 text-white shadow-md"
+                            ? "bg-slate-800 border-purple-500/80 text-white shadow-sm"
                             : "bg-slate-950 border-slate-800 text-slate-300 hover:border-slate-700"
                         }`}
                       >
@@ -321,26 +352,26 @@ Option B (Step-by-step Prompt):
                     ))}
                   </div>
                 )}
-                <p className="text-[10px] text-slate-400 mt-1.5">
-                  AI aapke bataye gaye duration ke hisab se scenes aur spoken word count organize karega.
+                <p className="text-[11px] text-slate-400 mt-1.5">
+                  AI aapke duration ke mutabiq scenes aur spoken narration arrange karega.
                 </p>
               </div>
             </div>
 
             {/* Language & Voice Row */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-slate-800">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-slate-800/80">
               <div>
-                <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">
+                <label className="block text-xs font-semibold text-slate-300 mb-1.5">
                   5. Zuban (Language)
                 </label>
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     type="button"
                     onClick={() => setLanguageStyle("urdu")}
-                    className={`py-2 px-3 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+                    className={`py-2 px-3 rounded-xl border text-xs font-semibold transition-all cursor-pointer ${
                       languageStyle === "urdu"
-                        ? "bg-purple-950/60 border-purple-500 text-white ring-1 ring-purple-400"
-                        : "bg-slate-950 border-slate-800 text-slate-400"
+                        ? "bg-slate-800 border-purple-500/80 text-white shadow-sm"
+                        : "bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700"
                     }`}
                   >
                     Roman Urdu / Hindi
@@ -348,10 +379,10 @@ Option B (Step-by-step Prompt):
                   <button
                     type="button"
                     onClick={() => setLanguageStyle("english")}
-                    className={`py-2 px-3 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+                    className={`py-2 px-3 rounded-xl border text-xs font-semibold transition-all cursor-pointer ${
                       languageStyle === "english"
-                        ? "bg-purple-950/60 border-purple-500 text-white ring-1 ring-purple-400"
-                        : "bg-slate-950 border-slate-800 text-slate-400"
+                        ? "bg-slate-800 border-purple-500/80 text-white shadow-sm"
+                        : "bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700"
                     }`}
                   >
                     English
@@ -360,30 +391,44 @@ Option B (Step-by-step Prompt):
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">
-                  6. YouTube Privacy
+                <label className="block text-xs font-semibold text-slate-300 mb-1.5">
+                  6. YouTube Privacy &amp; Auto-Publish
                 </label>
-                <select
-                  value={privacyStatus}
-                  onChange={(e: any) => setPrivacyStatus(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-slate-200 text-xs focus:outline-none focus:border-purple-500"
-                >
-                  <option value="public">Public (Turant live ho jaye)</option>
-                  <option value="unlisted">Unlisted (Link wale dekh sakein)</option>
-                  <option value="private">Private (Pehle khud review karein)</option>
-                </select>
+                <div className="space-y-2">
+                  <select
+                    value={privacyStatus}
+                    onChange={(e: any) => setPrivacyStatus(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-800 text-slate-200 text-xs focus:outline-none focus:border-purple-500 transition-colors"
+                  >
+                    <option value="public">Public (Direct Live On YouTube)</option>
+                    <option value="unlisted">Unlisted (Link wale dekh sakein)</option>
+                    <option value="private">Private (Pehle khud review karein)</option>
+                  </select>
+
+                  <label className="flex items-center gap-2 cursor-pointer pt-1">
+                    <input
+                      type="checkbox"
+                      checked={autoPublish}
+                      onChange={(e) => setAutoPublish(e.target.checked)}
+                      className="w-4 h-4 rounded border-slate-700 bg-slate-950 text-purple-600 focus:ring-purple-500"
+                    />
+                    <span className="text-xs text-emerald-400 font-semibold">
+                      Khud direct YouTube par publish karein (Auto-Publish ON)
+                    </span>
+                  </label>
+                </div>
               </div>
             </div>
 
             {/* Submit Action Button */}
-            <div className="pt-3">
+            <div className="pt-2">
               <button
                 type="submit"
-                disabled={isSubmitting || !customPrompt.trim()}
-                className={`w-full py-3.5 px-6 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all shadow-lg cursor-pointer ${
-                  isSubmitting || !customPrompt.trim()
-                    ? "bg-slate-800 text-slate-500 cursor-not-allowed"
-                    : "bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-600 hover:from-purple-500 hover:to-indigo-500 text-white shadow-purple-950 ring-1 ring-purple-400"
+                disabled={isSubmitting || (!customPrompt.trim() && !customScript.trim() && !topic.trim())}
+                className={`w-full py-3.5 px-6 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all shadow-md cursor-pointer ${
+                  isSubmitting || (!customPrompt.trim() && !customScript.trim() && !topic.trim())
+                    ? "bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700/50"
+                    : "bg-purple-600 hover:bg-purple-500 text-white shadow-purple-950/40 border border-purple-500"
                 }`}
               >
                 {isSubmitting ? (
@@ -394,7 +439,7 @@ Option B (Step-by-step Prompt):
                 ) : (
                   <>
                     <Send className="w-4 h-4" />
-                    <span>Prompt Se Video Banao (~{targetMinutes} Min {videoFormat === "long" ? "Long" : "Shorts"})</span>
+                    <span>Video Generate Aur Auto-Publish Karein ({targetMinutes} Min {videoFormat === "long" ? "Long" : "Shorts"})</span>
                   </>
                 )}
               </button>
@@ -405,30 +450,30 @@ Option B (Step-by-step Prompt):
         {/* Right Column: Templates & Story Arc Guide */}
         <div className="lg:col-span-4 space-y-5">
           {/* Story Arc Guide */}
-          <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 space-y-3">
-            <h3 className="text-xs font-bold text-purple-400 uppercase tracking-wider flex items-center gap-1.5">
-              <HelpCircle className="w-3.5 h-3.5" />
+          <div className="p-5 rounded-2xl bg-slate-900/90 border border-slate-800 shadow-sm space-y-3">
+            <h3 className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+              <HelpCircle className="w-4 h-4 text-purple-400" />
               <span>Professional Video Structure</span>
             </h3>
-            <div className="text-[11px] text-slate-300 space-y-2 leading-relaxed">
-              <div className="p-2.5 rounded-lg bg-slate-950/60 border border-slate-800/80">
-                <span className="font-bold text-amber-400">1. Opening Hook:</span> Pehle 3 second mein shock ya curiosity gap paida karein.
+            <div className="text-xs text-slate-300 space-y-2 leading-relaxed">
+              <div className="p-2.5 rounded-lg bg-slate-950 border border-slate-800/80">
+                <span className="font-semibold text-amber-400">1. Opening Hook:</span> Pehle 3 second mein shock ya curiosity gap paida karein.
               </div>
-              <div className="p-2.5 rounded-lg bg-slate-950/60 border border-slate-800/80">
-                <span className="font-bold text-cyan-400">2. Step-by-Step Details:</span> Uske baad mechanics, reality aur facts tafseel se bayan karein.
+              <div className="p-2.5 rounded-lg bg-slate-950 border border-slate-800/80">
+                <span className="font-semibold text-cyan-400">2. Step-by-Step Details:</span> Uske baad mechanics, reality aur facts tafseel se bayan karein.
               </div>
-              <div className="p-2.5 rounded-lg bg-slate-950/60 border border-slate-800/80">
-                <span className="font-bold text-rose-400">3. Turning Point / Twist:</span> Beech mein sab se hairan-kun point samjhayein.
+              <div className="p-2.5 rounded-lg bg-slate-950 border border-slate-800/80">
+                <span className="font-semibold text-rose-400">3. Turning Point:</span> Beech mein sab se hairan-kun point samjhayein.
               </div>
-              <div className="p-2.5 rounded-lg bg-slate-950/60 border border-slate-800/80">
-                <span className="font-bold text-emerald-400">4. Satisfying Outro:</span> Aakhir mein baat poori karein aur channel subscribe karne ka bole.
+              <div className="p-2.5 rounded-lg bg-slate-950 border border-slate-800/80">
+                <span className="font-semibold text-emerald-400">4. Satisfying Outro:</span> Aakhir mein baat poori karein aur channel subscribe karne ka bole.
               </div>
             </div>
           </div>
 
           {/* Click-to-Apply Example Prompts */}
-          <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 space-y-3">
-            <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider">
+          <div className="p-5 rounded-2xl bg-slate-900/90 border border-slate-800 shadow-sm space-y-3">
+            <h3 className="text-xs font-semibold text-slate-300">
               Prompt Ke Examples (Click Karein)
             </h3>
             <div className="space-y-2">
@@ -437,17 +482,17 @@ Option B (Step-by-step Prompt):
                   key={idx}
                   type="button"
                   onClick={() => handleApplyTemplate(tmpl)}
-                  className="w-full p-3 rounded-xl bg-slate-950 border border-slate-800 hover:border-purple-500/60 text-left transition-all group cursor-pointer"
+                  className="w-full p-3.5 rounded-xl bg-slate-950 border border-slate-800 hover:border-purple-500/50 text-left transition-all group cursor-pointer"
                 >
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-slate-200 group-hover:text-purple-300">
+                    <span className="text-xs font-semibold text-slate-200 group-hover:text-purple-300">
                       {tmpl.title}
                     </span>
-                    <span className="text-[10px] px-2 py-0.5 rounded-md bg-purple-950/80 text-purple-300 border border-purple-800">
-                      {tmpl.minutes} Min {tmpl.format === "long" ? "Long" : "Short"}
+                    <span className="text-[11px] text-purple-400 font-mono tabular-nums">
+                      {tmpl.minutes}m {tmpl.format === "long" ? "Long" : "Short"}
                     </span>
                   </div>
-                  <p className="text-[11px] text-slate-400 mt-1 line-clamp-2">
+                  <p className="text-[11px] text-slate-400 mt-1.5 line-clamp-2 leading-relaxed">
                     {tmpl.prompt}
                   </p>
                 </button>

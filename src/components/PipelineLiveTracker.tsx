@@ -129,132 +129,106 @@ export default function PipelineLiveTracker({
   return (
     <div className="space-y-4">
       {/* 4 Big Key Answers Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
-        {/* Answer 1: Video Ban Gayi Ya Nahi? */}
-        <div className={`p-4 rounded-2xl border transition-all ${
-          isVideoReady || lastVideo
-            ? "bg-emerald-950/40 border-emerald-500/50 shadow-emerald-950/30"
-            : isRunning
-            ? "bg-amber-950/40 border-amber-500/50 shadow-amber-950/30 animate-pulse"
-            : "bg-slate-900/80 border-slate-800"
-        }`}>
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
-              Video Status (Ban Gayi?)
-            </span>
-            {isVideoReady || lastVideo ? (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-[11px] font-bold">
-                <CheckCircle2 className="w-3 h-3 text-emerald-400" />
-                Tayyar Hai ✅
-              </span>
-            ) : isRunning ? (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 text-[11px] font-bold">
-                <Activity className="w-3 h-3 animate-spin text-amber-400" />
-                Ban Rahi Hai...
-              </span>
-            ) : (
-              <span className="px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 text-[11px] font-semibold">
-                Idle / Ready
-              </span>
-            )}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Answer 1: Video Status */}
+        <div className="p-5 rounded-2xl bg-slate-900/90 border border-slate-800 shadow-sm flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between text-xs text-slate-400 font-medium mb-2">
+              <span>Video Status</span>
+              {isVideoReady || lastVideo ? (
+                <span className="text-emerald-400 flex items-center gap-1 font-semibold">
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  Tayyar Hai
+                </span>
+              ) : isRunning ? (
+                <span className="text-amber-400 flex items-center gap-1 font-semibold">
+                  <Activity className="w-3.5 h-3.5 animate-spin" />
+                  Generating...
+                </span>
+              ) : (
+                <span className="text-slate-400">Idle</span>
+              )}
+            </div>
+            <div className="text-base font-bold text-white">
+              {isVideoReady || lastVideo ? "Video Ban Chuki Hai" : isRunning ? "Processing Ongoing" : "Queue Empty"}
+            </div>
           </div>
-          <div className="text-lg font-black text-white">
-            {isVideoReady || lastVideo ? "🟢 Video Ban Chuki Hai" : isRunning ? "🟡 Process Jaari Hai" : "⚪ Queue Khali Hai"}
-          </div>
-          <p className="text-xs text-slate-400 mt-1 line-clamp-1">
-            {lastVideo ? `${lastVideo.title || "Latest Video"}` : isRunning ? "Engine is rendering scenes..." : "Click generate to produce video."}
+          <p className="text-xs text-slate-400 mt-2 line-clamp-1">
+            {lastVideo ? `${lastVideo.title || "Latest Video"}` : isRunning ? "Rendering audio & visuals..." : "Ready to start new run"}
           </p>
         </div>
 
         {/* Answer 2: Kitni Bani? */}
-        <div className="p-4 rounded-2xl bg-slate-900/80 border border-slate-800 shadow-md">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
-              Total Production (Kitni Bani?)
-            </span>
-            <span className="px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 text-[11px] font-bold">
-              Production Count
-            </span>
+        <div className="p-5 rounded-2xl bg-slate-900/90 border border-slate-800 shadow-sm flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between text-xs text-slate-400 font-medium mb-2">
+              <span>Total Generated</span>
+              <span className="text-purple-400 font-medium">Library</span>
+            </div>
+            <div className="text-2xl font-bold text-white flex items-baseline gap-1.5 tabular-nums">
+              <span>{totalVideosGenerated}</span>
+              <span className="text-xs font-normal text-slate-400">videos</span>
+            </div>
           </div>
-          <div className="text-2xl font-black text-white flex items-baseline gap-2">
-            <span>{totalVideosGenerated}</span>
-            <span className="text-xs font-semibold text-slate-400">Videos Total</span>
-          </div>
-          <p className="text-xs text-slate-400 mt-1">
-            {totalVideosGenerated > 0 ? `${totalVideosGenerated} videos stored & ready in library` : "Peheli video generate karein"}
+          <p className="text-xs text-slate-400 mt-2">
+            {totalVideosGenerated > 0 ? `${totalVideosGenerated} videos produced and logged` : "No completed videos yet"}
           </p>
         </div>
 
-        {/* Answer 3: Ab Kya Ho Raha Hai? */}
-        <div className={`p-4 rounded-2xl border transition-all ${
-          isRunning ? "bg-cyan-950/40 border-cyan-500/50 shadow-cyan-950/30" : "bg-slate-900/80 border-slate-800"
-        }`}>
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
-              Live Action (Ab Kya Ho Raha Hai?)
-            </span>
-            <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${
-              isRunning ? "bg-cyan-500/20 text-cyan-300" : "bg-slate-800 text-slate-400"
-            }`}>
-              {isRunning ? `Stage ${stageIndex}/${totalStages}` : "Idle"}
-            </span>
+        {/* Answer 3: Current Step */}
+        <div className="p-5 rounded-2xl bg-slate-900/90 border border-slate-800 shadow-sm flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between text-xs text-slate-400 font-medium mb-2">
+              <span>Current Activity</span>
+              <span className="text-cyan-400 font-mono text-xs tabular-nums">
+                {isRunning ? `Stage ${stageIndex}/${totalStages}` : "Standby"}
+              </span>
+            </div>
+            <div className="text-sm font-bold text-white line-clamp-1">
+              {stageTitle}
+            </div>
           </div>
-          <div className="text-sm font-black text-white line-clamp-1">
-            {stageTitle}
-          </div>
-          <p className="text-xs text-cyan-300/80 mt-1 line-clamp-1">
+          <p className="text-xs text-slate-400 mt-2 line-clamp-1">
             {stageDetail || stageDescription}
           </p>
         </div>
 
-        {/* Answer 4: Upload Kitni Howi? */}
-        <div className={`p-4 rounded-2xl border transition-all ${
-          isUploadReady || lastVideo?.youtubeUrl
-            ? "bg-red-950/30 border-red-500/40"
-            : isRunning
-            ? "bg-slate-900/80 border-slate-800"
-            : "bg-slate-900/80 border-slate-800"
-        }`}>
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
-              YouTube Upload (Kitni Howi?)
-            </span>
-            <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${
-              isUploadReady || lastVideo?.youtubeUrl
-                ? "bg-emerald-500/20 text-emerald-300"
-                : isRunning && uploadPercent > 0
-                ? "bg-amber-500/20 text-amber-300"
-                : "bg-slate-800 text-slate-400"
-            }`}>
-              {isUploadReady || lastVideo?.youtubeUrl ? "100% Uploaded" : isRunning ? `${uploadPercent}% Upload` : "Pending"}
-            </span>
-          </div>
-          <div className="text-sm font-black text-white">
-            {isUploadReady || lastVideo?.youtubeUrl ? (
-              <span className="text-emerald-300 flex items-center gap-1.5">
-                <CheckCircle2 className="w-4 h-4" /> YouTube Per Live Hai
+        {/* Answer 4: Upload Status */}
+        <div className="p-5 rounded-2xl bg-slate-900/90 border border-slate-800 shadow-sm flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between text-xs text-slate-400 font-medium mb-2">
+              <span>YouTube Upload</span>
+              <span className="font-mono text-xs tabular-nums text-slate-300">
+                {isUploadReady || lastVideo?.youtubeUrl ? "100%" : isRunning ? `${uploadPercent}%` : "0%"}
               </span>
-            ) : isRunning && uploadPercent > 0 ? (
-              <span className="text-amber-300">Uploading to Channel ({uploadPercent}%)</span>
-            ) : isRunning ? (
-              <span className="text-slate-300">Rendering (Upload Starts at 90%)</span>
-            ) : (
-              <span className="text-slate-400">Awaiting Upload</span>
-            )}
+            </div>
+            <div className="text-sm font-bold text-white">
+              {isUploadReady || lastVideo?.youtubeUrl ? (
+                <span className="text-emerald-400 flex items-center gap-1.5">
+                  <CheckCircle2 className="w-4 h-4" /> Live On Channel
+                </span>
+              ) : isRunning && uploadPercent > 0 ? (
+                <span className="text-amber-400">Uploading ({uploadPercent}%)</span>
+              ) : isRunning ? (
+                <span className="text-slate-300">Rendering Video</span>
+              ) : (
+                <span className="text-slate-400">Awaiting Upload</span>
+              )}
+            </div>
           </div>
-          <p className="text-xs text-slate-400 mt-1">
+          <p className="text-xs text-slate-400 mt-2">
             {lastVideo?.youtubeUrl ? (
               <a
                 href={lastVideo.youtubeUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="text-red-400 hover:text-red-300 underline font-bold inline-flex items-center gap-1"
+                className="text-red-400 hover:text-red-300 font-medium inline-flex items-center gap-1 transition-colors"
               >
-                <span>Open YouTube Link</span>
+                <span>Open YouTube Video</span>
                 <ExternalLink className="w-3 h-3" />
               </a>
             ) : (
-              "Channel connected via OAuth"
+              "Connected Channel Ready"
             )}
           </p>
         </div>
@@ -498,6 +472,16 @@ export default function PipelineLiveTracker({
                   <span>Watch on YouTube</span>
                 </a>
               )}
+
+              {/* Clear Video Button */}
+              <button
+                onClick={handleReset}
+                disabled={isResetting}
+                title="Remove video from screen"
+                className="p-2 rounded-xl bg-slate-800 hover:bg-rose-950/60 hover:text-rose-300 text-slate-400 border border-slate-700 text-xs transition-colors cursor-pointer"
+              >
+                ✕ Clear
+              </button>
             </div>
           </div>
 

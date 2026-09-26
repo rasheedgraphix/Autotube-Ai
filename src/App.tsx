@@ -21,12 +21,9 @@ import {
   Sliders,
   Clock,
   Zap,
-  BarChart3,
   Activity,
 } from "lucide-react";
 import SchedulerSection from "./components/SchedulerSection";
-import CricketStudioSection from "./components/CricketStudioSection";
-import YTStudioAnalyticsSection from "./components/YTStudioAnalyticsSection";
 import PipelineLiveTracker from "./components/PipelineLiveTracker";
 import PromptStudioSection from "./components/PromptStudioSection";
 import AutoTubeLogo from "./components/AutoTubeLogo";
@@ -45,7 +42,7 @@ export default function App() {
   const [niche, setNiche] = useState("Islamic Education");
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [videoPreviewUrl, setVideoPreviewUrl] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"cricket" | "prompt_video" | "analytics" | "pipeline" | "shorts" | "long" | "manual">("cricket");
+  const [activeTab, setActiveTab] = useState<"prompt_video" | "pipeline" | "shorts" | "long">("prompt_video");
   const [globalPipelineStatus, setGlobalPipelineStatus] = useState<any>(null);
 
   // Poll pipeline status globally for active progress updates
@@ -562,119 +559,72 @@ export default function App() {
         )}
 
         {/* Navigation Mode Switcher */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
-          <div className="inline-flex p-1.5 rounded-2xl bg-slate-900 border border-slate-800 shadow-inner flex-wrap gap-1">
-            <button
-              onClick={() => setActiveTab("cricket")}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                activeTab === "cricket"
-                  ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-lg shadow-emerald-950 ring-1 ring-emerald-400"
-                  : "text-slate-400 hover:text-white"
-              }`}
-            >
-              <span>🏏 Cricket Studio (Video & Highlights)</span>
-            </button>
-
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-800/80 pb-4">
+          <div className="inline-flex p-1 rounded-xl bg-slate-900/80 border border-slate-800 shadow-sm flex-wrap gap-1">
             <button
               onClick={() => setActiveTab("prompt_video")}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+              className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                 activeTab === "prompt_video"
-                  ? "bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-600 text-white shadow-lg shadow-purple-950 ring-1 ring-purple-400"
-                  : "text-slate-400 hover:text-white"
+                  ? "bg-slate-800 text-white shadow-sm border border-slate-700/60"
+                  : "text-slate-400 hover:text-slate-200"
               }`}
             >
-              <Sparkles className="w-4 h-4 text-purple-300" />
-              <span>✨ Prompt Se Video Banao</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab("analytics")}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                activeTab === "analytics"
-                  ? "bg-red-600 text-white shadow-lg shadow-red-950 ring-1 ring-red-400"
-                  : "text-slate-400 hover:text-white"
-              }`}
-            >
-              <BarChart3 className="w-4 h-4" />
-              <span>📊 YT Studio (Views, Subs, Geography, CTR)</span>
+              <Sparkles className="w-4 h-4 text-purple-400" />
+              <span>Prompt Se Video Banao</span>
             </button>
 
             <button
               onClick={() => setActiveTab("pipeline")}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer relative ${
+              className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer relative ${
                 activeTab === "pipeline"
-                  ? "bg-cyan-600 text-white shadow-lg shadow-cyan-950 ring-1 ring-cyan-400"
-                  : "text-slate-400 hover:text-white"
+                  ? "bg-slate-800 text-white shadow-sm border border-slate-700/60"
+                  : "text-slate-400 hover:text-slate-200"
               }`}
             >
-              <Activity className="w-4 h-4" />
-              <span>🔴 Live Pipeline Tracker</span>
+              <Activity className="w-4 h-4 text-cyan-400" />
+              <span>Live Pipeline Tracker</span>
               {globalPipelineStatus?.isRunning && (
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
               )}
             </button>
 
             <button
               onClick={() => setActiveTab("shorts")}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+              className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                 activeTab === "shorts"
-                  ? "bg-slate-800 text-white shadow-md"
-                  : "text-slate-400 hover:text-white"
+                  ? "bg-slate-800 text-white shadow-sm border border-slate-700/60"
+                  : "text-slate-400 hover:text-slate-200"
               }`}
             >
-              <Zap className="w-4 h-4" />
-              <span>⚡ Shorts (2+ Min)</span>
+              <Zap className="w-4 h-4 text-amber-400" />
+              <span>Shorts (2+ Min)</span>
             </button>
 
             <button
               onClick={() => setActiveTab("long")}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+              className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                 activeTab === "long"
-                  ? "bg-gradient-to-r from-amber-600 to-orange-600 text-white shadow-lg shadow-amber-950"
-                  : "text-slate-400 hover:text-white"
+                  ? "bg-slate-800 text-white shadow-sm border border-slate-700/60"
+                  : "text-slate-400 hover:text-slate-200"
               }`}
             >
-              <Play className="w-4 h-4 fill-current" />
-              <span>🎬 Long Video (8+ Min)</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab("manual")}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                activeTab === "manual"
-                  ? "bg-slate-700 text-white shadow-lg"
-                  : "text-slate-400 hover:text-white"
-              }`}
-            >
-              <UploadCloud className="w-4 h-4" />
-              <span>Custom Video Uploader</span>
+              <Play className="w-4 h-4 text-red-400 fill-current" />
+              <span>Long Video (8+ Min)</span>
             </button>
           </div>
 
           <div className="text-xs text-slate-400 flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="text-slate-300 font-medium">AutoTube AI Sports &amp; Studio Suite</span>
+            <span className="w-2 h-2 rounded-full bg-emerald-400" />
+            <span className="text-slate-300 font-medium">AutoTube Studio</span>
           </div>
         </div>
 
-        {activeTab === "cricket" ? (
-          <CricketStudioSection
-            connectedToken={token}
-            channelTitle={channel?.title}
-            onConnectChannel={() => setShowAuthModal(true)}
-          />
-        ) : activeTab === "prompt_video" ? (
+        {activeTab === "prompt_video" ? (
           <PromptStudioSection
             connectedToken={token}
             channelTitle={channel?.title}
             onConnectChannel={() => setShowAuthModal(true)}
             onNavigateToTracker={() => setActiveTab("pipeline")}
-          />
-        ) : activeTab === "analytics" ? (
-          <YTStudioAnalyticsSection
-            connectedToken={token}
-            channelTitle={channel?.title}
-            onConnectChannel={() => setShowAuthModal(true)}
           />
         ) : activeTab === "pipeline" ? (
           <div className="space-y-6">
@@ -717,9 +667,10 @@ export default function App() {
             onConnectChannel={() => setShowAuthModal(true)}
             initialFormat="long"
           />
-        ) : (
-          /* Dashboard Grid */
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        ) : null}
+      </main>
+          {/* Dashboard Grid */}
+          {false && <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* Left Column: Inputs & Primary Action Buttons */}
           <div className="lg:col-span-5 space-y-6">
             {/* Step 1: Channel Niche */}
@@ -1143,9 +1094,7 @@ export default function App() {
               </div>
             </div>
           </div>
-        </div>
-        )}
-      </main>
+        </div>}
 
       {/* Google OAuth Modal for YouTube Connection */}
       {showAuthModal && (

@@ -8,12 +8,31 @@ export const AUTOTUBE_TMP_DIR = "/tmp/autotube";
 export const SYSTEM_FFMPEG_PATH = "/usr/bin/ffmpeg";
 export const PRIMARY_FONT_PATH = "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf";
 
-// Ensure /workspace exists if running in /app/applet container
+// Ensure /workspace exists and points to /app/applet (or vice versa) for universal container path resolution
 try {
-  if (!fs.existsSync("/workspace") && fs.existsSync("/app/applet")) {
-    fs.symlinkSync("/app/applet", "/workspace");
+  if (fs.existsSync("/app/applet") && !fs.existsSync("/workspace")) {
+    try { fs.symlinkSync("/app/applet", "/workspace"); } catch {}
+  } else if (fs.existsSync("/app/applet") && fs.existsSync("/workspace")) {
+    try {
+      const stats = fs.lstatSync("/workspace");
+      if (!stats.isSymbolicLink()) {
+        try {
+          fs.rmdirSync("/workspace");
+          fs.symlinkSync("/app/applet", "/workspace");
+        } catch {
+          if (!fs.existsSync("/workspace/node_modules") && fs.existsSync("/app/applet/node_modules")) {
+            fs.symlinkSync("/app/applet/node_modules", "/workspace/node_modules");
+          }
+        }
+      }
+    } catch {}
   }
 } catch {}
+
+// Set FFMPEG_BIN env var so ffmpeg-static module always points to verified system binary if present
+if (fs.existsSync(SYSTEM_FFMPEG_PATH)) {
+  process.env.FFMPEG_BIN = SYSTEM_FFMPEG_PATH;
+}
 
 // Ensure FONTCONFIG_PATH is set for all child processes and font operations
 if (!process.env.FONTCONFIG_PATH) {
@@ -175,30 +194,47 @@ export function getFfmpegStatus(): FfmpegStatus {
     // ignore
   }
 
-  // 3. Check bundled ffmpeg-static binary only if executable actually runs and exists
-  if (typeof ffmpegStatic === "string" && ffmpegStatic && fs.existsSync(ffmpegStatic)) {
-    const staticTest = testFfmpegExecutable(ffmpegStatic);
-    if (staticTest.ok) {
-      cachedFfmpegStatus = {
-        available: true,
-        binaryPath: ffmpegStatic,
-        version: staticTest.version || "ffmpeg-static v7",
-        source: "ffmpeg-static",
-        hasDrawtext: staticTest.hasDrawtext,
-      };
-      return cachedFfmpegStatus;
+  // 3. Check bundled ffmpeg-static binary candidates (resolving workspace vs applet container paths)
+  const staticCandidates = [
+    typeof ffmpegStatic === "string" ? ffmpegStatic : null,
+    "/app/applet/node_modules/ffmpeg-static/ffmpeg",
+    "/workspace/node_modules/ffmpeg-static/ffmpeg",
+    path.join(process.cwd(), "node_modules/ffmpeg-static/ffmpeg"),
+  ].filter((c): c is string => Boolean(c));
+
+  for (const candidate of staticCandidates) {
+    let resolvedCandidate = candidate;
+    if (!fs.existsSync(resolvedCandidate)) {
+      if (resolvedCandidate.startsWith("/workspace/")) {
+        resolvedCandidate = resolvedCandidate.replace("/workspace/", "/app/applet/");
+      } else if (resolvedCandidate.startsWith("/app/applet/")) {
+        resolvedCandidate = resolvedCandidate.replace("/app/applet/", "/workspace/");
+      }
+    }
+    if (fs.existsSync(resolvedCandidate)) {
+      const staticTest = testFfmpegExecutable(resolvedCandidate);
+      if (staticTest.ok) {
+        cachedFfmpegStatus = {
+          available: true,
+          binaryPath: resolvedCandidate,
+          version: staticTest.version || "ffmpeg-static v7",
+          source: "ffmpeg-static",
+          hasDrawtext: staticTest.hasDrawtext,
+        };
+        return cachedFfmpegStatus;
+      }
     }
   }
 
   // 4. Default to system FFmpeg if it exists
   const fallbackPath = fs.existsSync(SYSTEM_FFMPEG_PATH)
     ? SYSTEM_FFMPEG_PATH
-    : (typeof ffmpegStatic === "string" && ffmpegStatic && fs.existsSync(ffmpegStatic) ? ffmpegStatic : SYSTEM_FFMPEG_PATH);
+    : (fs.existsSync("/usr/bin/ffmpeg") ? "/usr/bin/ffmpeg" : "ffmpeg");
   cachedFfmpegStatus = {
     available: fs.existsSync(fallbackPath),
     binaryPath: fallbackPath,
     source: fallbackPath === SYSTEM_FFMPEG_PATH ? "system" : "ffmpeg-static",
-    hasDrawtext: true,
+    hasDrawtext: fallbackPath === SYSTEM_FFMPEG_PATH,
     error: undefined,
   };
   return cachedFfmpegStatus;
@@ -224,6 +260,13 @@ export function getRequiredFfmpegBinary(): string {
   if (status.binaryPath && fs.existsSync(status.binaryPath)) {
     return status.binaryPath;
   }
+  // Try which ffmpeg
+  try {
+    const whichOut = execSync("which ffmpeg", { encoding: "utf8", timeout: 3000 }).trim();
+    if (whichOut && fs.existsSync(whichOut)) {
+      return whichOut;
+    }
+  } catch {}
   return SYSTEM_FFMPEG_PATH;
 }
 

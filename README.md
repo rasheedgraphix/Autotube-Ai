@@ -1,17 +1,24 @@
-# AutoTube AI - YouTube Shorts Automated Pipeline
+# AutoTube Studio
 
-App is manual-only, no auto schedule.
+Autonomous AI Video Production Studio (Shorts & Long-form Videos) with Google Gemini AI, Google Veo 3, ElevenLabs, and YouTube Data API.
 
-## Overview
-AutoTube AI generates and uploads viral 60-second YouTube Shorts on demand when you click **"GENERATE & UPLOAD NOW"**.
+## 🚀 GitHub Actions Auto-Deploy to GitHub Pages
+This repository is configured with an automated CI/CD pipeline (`.github/workflows/deploy.yml`).
 
-### Manual Pipeline Flow:
-1. Queries YouTube Analytics API for the highest CTR topic.
-2. Prompts Gemini AI to write viral scripts, 15 SEO tags, and 5 hashtags.
-3. Renders 60-second vertical video (Google Veo 3 / FFmpeg + ElevenLabs voiceover + Hormozi bold captions).
-4. Auto-uploads directly to connected YouTube channel via OAuth 2.0.
+### Setup in GitHub:
+1. Push this repository to GitHub.
+2. In your repository, go to **Settings** -> **Pages**.
+3. Under **Build and deployment** -> **Source**, select **GitHub Actions**.
+4. Now, whenever you push or commit changes to `main` or `master`, GitHub Actions will automatically build and deploy your site to GitHub Pages!
 
-### Configuration
-- `GEMINI_API_KEY`: Required for script generation and Veo 3.
-- `ELEVENLABS_API_KEY`: Required for human studio voiceover.
-- `GOOGLE_CLIENT_ID` & `GOOGLE_CLIENT_SECRET`: For YouTube OAuth integration.
+### Local Development:
+```bash
+npm install
+npm run dev
+```
+
+### Full Production Build:
+```bash
+npm run build
+npm start
+```

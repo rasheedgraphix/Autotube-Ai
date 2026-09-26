@@ -23,6 +23,8 @@ import {
   Layers,
   Scissors,
   FileVideo,
+  Upload,
+  Download,
 } from "lucide-react";
 import PipelineLiveTracker from "./PipelineLiveTracker";
 
@@ -1201,31 +1203,49 @@ export default function CricketStudioSection({
         </div>
       </div>
 
-      {/* Previous Run Result & Video Preview */}
-      {lastRun && lastRun.youtube && (
+      {/* Previous Run Result & Video Preview (In-App Player & YouTube) */}
+      {(lastRun?.youtube || lastRun?.video?.previewUrl || pipelineStatus?.progress?.currentVideoMetadata?.previewUrl) && (
         <div className="p-6 rounded-2xl bg-gradient-to-r from-emerald-950/40 via-slate-900 to-slate-900 border-2 border-emerald-500/50 shadow-xl space-y-4">
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
             <div className="space-y-1">
               <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-bold">
                 <CheckCircle2 className="w-3.5 h-3.5" />
-                <span>Uploaded to YouTube Successfully</span>
+                <span>{lastRun?.youtube ? "Uploaded to YouTube Successfully ✅" : "Video Ready for Review (Preview Mode) 🎬"}</span>
               </div>
-              <h4 className="text-lg font-bold text-white">{lastRun.script?.title || "Cricket Documentary"}</h4>
-              <p className="text-xs text-slate-400 font-mono select-all">{lastRun.youtube.videoUrl}</p>
+              <h4 className="text-lg font-bold text-white">{lastRun?.script?.title || pipelineStatus?.progress?.currentVideoMetadata?.title || "Cricket Documentary"}</h4>
+              <p className="text-xs text-slate-400 font-mono select-all">
+                {lastRun?.youtube?.videoUrl || (lastRun?.video?.previewUrl ? "Generated and playable directly below" : "")}
+              </p>
             </div>
 
-            <a
-              href={lastRun.youtube.videoUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white text-xs font-bold shadow-lg shadow-red-950/50 transition-all"
-            >
-              <ExternalLink className="w-4 h-4" />
-              <span>Watch on YouTube</span>
-            </a>
+            <div className="flex items-center gap-2 flex-wrap">
+              {lastRun?.youtube?.videoUrl ? (
+                <a
+                  href={lastRun.youtube.videoUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white text-xs font-bold shadow-lg shadow-red-950/50 transition-all"
+                >
+                  <ExternalLink className="w-4 h-4" />
+                  <span>Watch on YouTube</span>
+                </a>
+              ) : (
+                (lastRun?.video?.previewUrl || pipelineStatus?.progress?.currentVideoMetadata?.previewUrl) && (
+                  <a
+                    href={lastRun?.video?.previewUrl || pipelineStatus?.progress?.currentVideoMetadata?.previewUrl}
+                    download="cricket_video.mp4"
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold shadow-lg shadow-emerald-950/50 transition-all cursor-pointer"
+                  >
+                    <Download className="w-4 h-4" />
+                    <span>Download MP4</span>
+                  </a>
+                )
+              )}
+            </div>
           </div>
 
-          {lastRun.youtube.videoId && (
+          {/* If YouTube published, show YouTube embed; else show native HTML5 video player */}
+          {lastRun?.youtube?.videoId ? (
             <div className="aspect-video max-w-xl mx-auto rounded-xl overflow-hidden shadow-lg border border-slate-800">
               <iframe
                 src={`https://www.youtube.com/embed/${lastRun.youtube.videoId}`}
@@ -1235,7 +1255,19 @@ export default function CricketStudioSection({
                 className="w-full h-full"
               />
             </div>
-          )}
+          ) : (lastRun?.video?.previewUrl || pipelineStatus?.progress?.currentVideoMetadata?.previewUrl) ? (
+            <div className="max-w-xl mx-auto rounded-xl overflow-hidden shadow-2xl border border-emerald-500/40 bg-black p-2">
+              <video
+                src={lastRun?.video?.previewUrl || pipelineStatus?.progress?.currentVideoMetadata?.previewUrl}
+                controls
+                autoPlay={false}
+                className="w-full rounded-lg max-h-[460px] object-contain mx-auto bg-black"
+              />
+              <p className="text-[11px] text-center text-slate-400 mt-2">
+                Aap video ko play karke check kar sakte hain. Agar video theek hai toh Live Tracker mein "Upload to YouTube" button daba sakte hain.
+              </p>
+            </div>
+          ) : null}
         </div>
       )}
     </div>

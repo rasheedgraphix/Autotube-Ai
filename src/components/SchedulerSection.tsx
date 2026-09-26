@@ -285,27 +285,18 @@ export default function SchedulerSection({
 
         <div className="flex flex-col gap-6 relative z-10">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-            <div className="space-y-2">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="px-3 py-1 rounded-full text-xs font-bold bg-amber-500/15 text-amber-300 border border-amber-500/30 flex items-center gap-1.5 shadow-sm">
-                  <Radio className="w-3.5 h-3.5 animate-pulse text-amber-400" />
-                  MANUAL TRIGGER ONLY
-                </span>
-                <span className="px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 flex items-center gap-1.5">
-                  <Zap className="w-3.5 h-3.5 text-emerald-400" />
-                  ON-DEMAND FACT PIPELINE
-                </span>
-                <span className="px-3 py-1 rounded-full text-xs font-semibold bg-purple-500/15 text-purple-200 border border-purple-500/30 flex items-center gap-1.5">
-                  <Film className="w-3.5 h-3.5 text-purple-300" />
-                  AI VISUALS + ELEVENLABS NARRATION
-                </span>
+            <div className="space-y-1">
+              <div className="flex items-center gap-2 text-xs text-slate-400 font-semibold mb-1">
+                <span>Autonomous Studio</span>
+                <span aria-hidden="true">·</span>
+                <span>Veo 3 + ElevenLabs</span>
               </div>
 
-              <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-white flex items-center gap-2.5">
-                Automated Video Factory & Pipeline
+              <h2 className="text-xl font-bold tracking-tight text-white">
+                Automated Video Production
               </h2>
-              <p className="text-sm text-slate-300 max-w-2xl leading-relaxed">
-                Choose between creating a high-retention <b className="text-white">60-second YouTube Short (9:16)</b> or a comprehensive <b className="text-amber-300">8+ Minute Full HD Documentary (16:9)</b>. Gemini AI writes verified scripts, the visual engine generates matching scenes with real human narration, and uploads directly to your YouTube channel!
+              <p className="text-xs sm:text-sm text-slate-400 max-w-2xl leading-relaxed mt-1">
+                High-retention 9:16 Shorts ya comprehensive 8+ Minute Long Documentary select karein. Verified scripts, cinematic visuals aur ElevenLabs voiceover YouTube par publish hote hain.
               </p>
             </div>
           </div>
@@ -778,12 +769,22 @@ export default function SchedulerSection({
             </div>
             <div>
               <h3 className="text-sm font-bold text-white">YouTube Analytics API • High CTR Topics</h3>
-              <p className="text-[11px] text-slate-400">Live topics ranked by click-through rate for maximum viral potential</p>
+              <p className="text-[11px] text-slate-400">Live topics dynamically ranked & rotated in real-time for maximum viral potential</p>
             </div>
           </div>
-          <span className="text-[11px] px-2.5 py-1 rounded-full bg-slate-800 text-slate-300 border border-slate-700">
-            Source: {analyticsSource}
-          </span>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => refreshData()}
+              className="px-2.5 py-1 rounded-full bg-red-950/60 hover:bg-red-900/80 text-red-300 hover:text-white border border-red-800/50 text-[11px] font-semibold flex items-center gap-1.5 transition-all shadow-sm cursor-pointer"
+              title="Rotate & fetch fresh real-time trending topics"
+            >
+              <RefreshCw className="w-3 h-3" />
+              <span>Rotate Live Topics</span>
+            </button>
+            <span className="text-[11px] px-2.5 py-1 rounded-full bg-slate-800 text-slate-300 border border-slate-700">
+              Source: {analyticsSource}
+            </span>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
