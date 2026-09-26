@@ -27,6 +27,7 @@ import SchedulerSection from "./components/SchedulerSection";
 import PipelineLiveTracker from "./components/PipelineLiveTracker";
 import PromptStudioSection from "./components/PromptStudioSection";
 import AutoTubeLogo from "./components/AutoTubeLogo";
+import { safeFetchJson } from "./utils/safeFetch";
 
 interface ChannelInfo {
   id: string;
@@ -160,15 +161,14 @@ export default function App() {
       if (authToken) {
         headers["Authorization"] = `Bearer ${authToken}`;
       }
-      const res = await fetch("/api/auth/status", { headers });
-      const data = await res.json();
-      if (data.connected && data.channel) {
+      const { ok, data } = await safeFetchJson<any>("/api/auth/status", { headers });
+      if (ok && data?.connected && data.channel) {
         setChannel(data.channel);
         if (data.token) {
           setToken(data.token);
           localStorage.setItem("autotube_token", data.token);
         }
-      } else if (authToken) {
+      } else if (authToken && (!ok || !data?.connected)) {
         // Token was invalid or expired
         localStorage.removeItem("autotube_token");
         setToken(null);
@@ -296,11 +296,10 @@ export default function App() {
     setErrorMsg(null);
     try {
       const clientIdParam = manualClientId ? `?clientId=${encodeURIComponent(manualClientId)}` : "";
-      const res = await fetch(`/api/auth/google/url${clientIdParam}`);
-      const data = await res.json();
+      const { ok, data, error } = await safeFetchJson<any>(`/api/auth/google/url${clientIdParam}`);
 
-      if (!res.ok || !data.url) {
-        throw new Error(data.error || "Unable to start Google OAuth flow. Please enter your Client ID.");
+      if (!ok || !data?.url) {
+        throw new Error(error || data?.error || "Unable to start Google OAuth flow. Please enter your Client ID.");
       }
 
       const width = 600;
@@ -331,14 +330,13 @@ export default function App() {
     setErrorMsg(null);
     setIsConnectingToken(true);
     try {
-      const res = await fetch("/api/auth/connect-token", {
+      const { ok, data, error } = await safeFetchJson<any>("/api/auth/connect-token", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ token: manualToken.trim() }),
       });
-      const data = await res.json();
-      if (!res.ok || !data.success) {
-        throw new Error(data.error || "Invalid Google Access Token.");
+      if (!ok || !data?.success) {
+        throw new Error(error || data?.error || "Invalid Google Access Token.");
       }
 
       setToken(data.token);

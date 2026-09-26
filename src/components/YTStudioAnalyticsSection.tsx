@@ -25,6 +25,7 @@ import {
   Layers,
   Award,
 } from "lucide-react";
+import { safeFetchJson } from "../utils/safeFetch";
 
 interface YTStudioAnalyticsSectionProps {
   connectedToken: string | null;
@@ -49,12 +50,11 @@ export default function YTStudioAnalyticsSection({
     setIsRefreshing(true);
     setAuthError(null);
     try {
-      const res = await fetch("/api/studio/analytics", {
+      const { ok, data: resData } = await safeFetchJson<any>("/api/studio/analytics", {
         headers: connectedToken ? { Authorization: `Bearer ${connectedToken}` } : {},
       });
-      const resJson = await res.json();
-      if (resJson.success && resJson.data) {
-        setData(resJson.data);
+      if (ok && resData?.success && resData?.data) {
+        setData(resData.data);
       }
     } catch (err: any) {
       console.error("Failed to load studio analytics:", err);
@@ -77,14 +77,13 @@ export default function YTStudioAnalyticsSection({
     setConnectingManual(true);
     setAuthError(null);
     try {
-      const res = await fetch("/api/auth/connect-token", {
+      const { ok, data: resJson, error } = await safeFetchJson<any>("/api/auth/connect-token", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ token: manualTokenInput.trim() }),
       });
-      const resJson = await res.json();
-      if (!res.ok || !resJson.success) {
-        throw new Error(resJson.error || "Invalid Google Access Token.");
+      if (!ok || !resJson?.success) {
+        throw new Error(error || resJson?.error || "Invalid Google Access Token.");
       }
       localStorage.setItem("autotube_token", resJson.token);
       setManualTokenInput("");

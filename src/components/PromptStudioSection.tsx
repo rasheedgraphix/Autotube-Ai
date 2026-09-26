@@ -15,6 +15,7 @@ import {
   Sliders,
   Send,
 } from "lucide-react";
+import { safeFetchJson } from "../utils/safeFetch";
 
 interface Props {
   connectedToken: string | null;
@@ -101,7 +102,7 @@ export default function PromptStudioSection({
         ? `USE EXACT SCRIPT WORD FOR WORD: ${customScript.trim()}`
         : customPrompt.trim();
 
-      const res = await fetch("/api/scheduler/daily-run", {
+      const { ok, data, error } = await safeFetchJson<any>("/api/scheduler/daily-run", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -119,9 +120,8 @@ export default function PromptStudioSection({
         }),
       });
 
-      const data = await res.json();
-      if (!res.ok || data.success === false) {
-        throw new Error(data.error || data.message || "Video generation start nahi ho saki.");
+      if (!ok || data?.success === false) {
+        throw new Error(error || data?.error || data?.message || "Video generation start nahi ho saki.");
       }
 
       setSuccessMsg(
